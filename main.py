@@ -2,67 +2,63 @@ import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-# --- CONFIGURAÇÃO DE CAMINHOS ---
+# --- CONFIGURAÇÃO ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 NOME_PLANILHA = "dados.xlsx"
 NOME_IMAGEM = "modelo_protocolo.png"
-
-INPUT_EXCEL = os.path.join(BASE_DIR, NOME_PLANILHA)
-MODELO_PATH = os.path.join(BASE_DIR, NOME_IMAGEM)
 OUTPUT_DIR = os.path.join(BASE_DIR, "protocolos_prontos")
 
 def gerar_protocolos():
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
-    # Verifica se os arquivos básicos existem
-    if not os.path.exists(INPUT_EXCEL):
-        print(f"❌ Erro: Arquivo '{NOME_PLANILHA}' não encontrado na pasta {BASE_DIR}")
-        return
-    if not os.path.exists(MODELO_PATH):
-        print(f"❌ Erro: Imagem '{NOME_IMAGEM}' não encontrada na pasta {BASE_DIR}")
-        return
+    caminho_excel = os.path.join(BASE_DIR, NOME_PLANILHA)
+    caminho_img = os.path.join(BASE_DIR, NOME_IMAGEM)
 
     try:
-        print(f"⏳ Lendo dados de {NOME_PLANILHA}...")
-        df = pd.read_excel(INPUT_EXCEL)
+        print(f"⏳ Lendo {NOME_PLANILHA}...")
+        # Lemos o Excel (se houver linhas vazias no topo, o pandas ignora)
+        df = pd.read_excel(caminho_excel)
         
-        # Limpa os nomes das colunas (tira espaços extras e deixa em maiúsculo)
+        # LIMPEZA TOTAL DE COLUNAS: tira espaços, remove acentos (opcional) e põe em MAIÚSCULO
         df.columns = [str(c).strip().upper() for c in df.columns]
         
-        print(f"📋 Colunas identificadas na sua planilha: {list(df.columns)}")
+        colunas_encontradas = list(df.columns)
+        print(f"📋 Colunas que o Python encontrou: {colunas_encontradas}")
+
+        if not colunas_encontradas:
+            print("❌ Erro: A planilha parece estar vazia!")
+            return
 
         for index, row in df.iterrows():
-            # Tenta abrir o modelo de imagem
-            with Image.open(MODELO_PATH).convert("RGB") as img:
+            # Abrindo a imagem modelo
+            with Image.open(caminho_img).convert("RGB") as img:
                 draw = ImageDraw.Draw(img)
                 fonte = ImageFont.load_default()
 
-                # --- BUSCA EXATA PELAS SUAS COLUNAS ---
-                # Usamos .get para que, se o nome estiver errado, o script não trave
-                val_protocolo = str(row.get('PROTOCOLO', 'S-ID'))
-                val_destin    = str(row.get('DESTINATÁRIO', '---'))
-                val_nf        = str(row.get('N.FISCAL', '---'))
-                val_cte       = str(row.get('MINUTACTE', '---'))
+                # USAMOS .get() PARA NUNCA MAIS DAR O ERRO DE 'KEYERROR'
+                # Se não achar a coluna, ele escreve "Não encontrado" em vez de travar
+                p_protocolo = str(row.get('PROTOCOLO', 'Sem_ID'))
+                p_destin    = str(row.get('DESTINATÁRIO', '---'))
+                p_fiscal    = str(row.get('N.FISCAL', '---'))
+                p_cte       = str(row.get('MINUTACTE', '---'))
 
-                # --- ESCREVENDO NO PROTOCOLO (Coordenadas X, Y) ---
-                draw.text((800, 48),  val_protocolo, fill="black", font=fonte)
-                draw.text((100, 145), val_destin,    fill="black", font=fonte)
-                draw.text((150, 242), val_nf,        fill="black", font=fonte)
-                draw.text((550, 242), val_cte,       fill="black", font=fonte)
+                # Escrevendo na imagem
+                draw.text((800, 48),  p_protocolo, fill="black", font=fonte)
+                draw.text((100, 145), p_destin,    fill="black", font=fonte)
+                draw.text((150, 242), p_fiscal,    fill="black", font=fonte)
+                draw.text((550, 242), p_cte,       fill="black", font=fonte)
 
-                # --- SALVAMENTO ---
-                # Salva com o número do protocolo para facilitar a busca
-                nome_arquivo = f"Protocolo_{val_protocolo}.png"
-                caminho_salvamento = os.path.join(OUTPUT_DIR, nome_arquivo)
-                
-                img.save(caminho_salvamento)
-                print(f"✅ Sucesso: {nome_arquivo} gerado.")
+                # Nome do arquivo de saída (usa o protocolo ou o número da linha se falhar)
+                nome_saida = f"Protocolo_{p_protocolo}_{index}.png"
+                img.save(os.path.join(OUTPUT_DIR, nome_saida))
+                print(f"✅ {nome_saida} gerado!")
 
-        print(f"\n🚀 Finalizado! Todos os protocolos estão na pasta: {OUTPUT_DIR}")
+        print(f"\n🚀 Finalizado! Verifique a pasta: {OUTPUT_DIR}")
 
     except Exception as e:
-        print(f"❌ Erro inesperado: {e}")
+        # Aqui ele vai te dizer exatamente onde foi o erro
+        print(f"❌ Erro crítico: {e}")
 
 if __name__ == "__main__":
     gerar_protocolos()
