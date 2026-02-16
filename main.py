@@ -21,43 +21,42 @@ def gerar_protocolos():
 
     try:
         print(f"⏳ Lendo dados de {NOME_PLANILHA}...")
+        # Lemos a planilha
         df = pd.read_excel(INPUT_EXCEL)
         
-        # Ajuste para ignorar maiúsculas/minúsculas e espaços nos nomes das colunas
-        df.columns = df.columns.astype(str).str.strip().str.upper()
+        # FORÇA todas as colunas a serem MAIÚSCULAS e sem espaços
+        df.columns = [str(c).strip().upper() for c in df.columns]
         
-        print(f"📋 Colunas lidas: {list(df.columns)}")
+        print(f"📋 Colunas detectadas: {list(df.columns)}")
 
         for index, row in df.iterrows():
             with Image.open(MODELO_PATH).convert("RGB") as img:
                 draw = ImageDraw.Draw(img)
                 fonte = ImageFont.load_default()
 
-                # --- MAPEAMENTO DAS SUAS COLUNAS ---
-                # O .get() busca o nome em MAIÚSCULO conforme transformamos acima
-                protocolo    = str(row.get('PROTOCOLO', '---'))
-                destinatario = str(row.get('DESTINATÁRIO', '---'))
-                nota_fiscal  = str(row.get('N.FISCAL', '---'))
-                minuta_cte   = str(row.get('MINUTACTE', '---'))
-                
-                # Se houver colunas de data ou recebedor, o script tentará ler também
-                data         = str(row.get('DATA', '---'))
-                recebedor    = str(row.get('NOME_RECEBEDOR', '---'))
+                # Pegamos os dados usando apenas MAIÚSCULAS
+                # Se não encontrar a coluna, ele coloca '---' em vez de dar erro
+                v_protocolo    = str(row.get('PROTOCOLO', 'Sem_ID'))
+                v_destinatario = str(row.get('DESTINATÁRIO', '---'))
+                v_n_fiscal     = str(row.get('N.FISCAL', '---'))
+                v_minuta       = str(row.get('MINUTACTE', '---'))
+                v_data         = str(row.get('DATA', '---'))
+                v_recebedor    = str(row.get('NOME_RECEBEDOR', '---'))
 
-                # --- PREENCHIMENTO NA IMAGEM (Coordenadas X, Y) ---
-                draw.text((800, 48),  protocolo,    fill="black", font=fonte)
-                draw.text((100, 145), destinatario, fill="black", font=fonte)
-                draw.text((150, 242), nota_fiscal,  fill="black", font=fonte)
-                draw.text((550, 242), minuta_cte,   fill="black", font=fonte)
-                draw.text((100, 310), data,         fill="black", font=fonte)
-                draw.text((100, 450), recebedor,    fill="black", font=fonte)
+                # --- ESCREVENDO NA IMAGEM ---
+                draw.text((800, 48),  v_protocolo,    fill="black", font=fonte)
+                draw.text((100, 145), v_destinatario, fill="black", font=fonte)
+                draw.text((150, 242), v_n_fiscal,     fill="black", font=fonte)
+                draw.text((550, 242), v_minuta,       fill="black", font=fonte)
+                draw.text((100, 310), v_data,         fill="black", font=fonte)
+                draw.text((100, 450), v_recebedor,    fill="black", font=fonte)
 
-                # --- SALVAMENTO ---
-                nome_saida = f"Protocolo_{protocolo}.png"
+                # --- SALVAMENTO (Usando a variável segura v_protocolo) ---
+                nome_saida = f"Protocolo_{index}.png" if v_protocolo == 'Sem_ID' else f"Protocolo_{v_protocolo}.png"
                 img.save(os.path.join(OUTPUT_DIR, nome_saida))
                 print(f"✅ Gerado: {nome_saida}")
 
-        print(f"\n🚀 Sucesso! Pasta de saída: {OUTPUT_DIR}")
+        print(f"\n🚀 Sucesso! Verifique a pasta: {OUTPUT_DIR}")
 
     except Exception as e:
         print(f"❌ Erro no processamento: {e}")
