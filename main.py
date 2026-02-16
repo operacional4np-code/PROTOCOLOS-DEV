@@ -4,7 +4,7 @@ import os
 
 # --- CONFIGURAÇÃO ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-NOME_PLANILHA = "dados.xlsx"
+NOME_PLANILHA = "Dados1.xlsx"
 NOME_IMAGEM = "modelo_protocolo.png"
 OUTPUT_DIR = os.path.join(BASE_DIR, "protocolos_prontos")
 
