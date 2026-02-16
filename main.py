@@ -62,4 +62,5 @@ def gerar_protocolos():
     except Exception as e:
         print(f"❌ Erro no processamento: {e}")
 
-if __name__ ==
+if __name__ == "__main__":
+    gerar_protocolos()
