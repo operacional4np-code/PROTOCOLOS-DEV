@@ -4,7 +4,7 @@ import os
 
 # --- CONFIGURAÇÃO DE CAMINHOS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-NOME_PLANILHA = "dados.xlsx"
+NOME_PLANILHA = "Dados.xlsx"
 NOME_IMAGEM = "modelo_protocolo.png"
 
 INPUT_EXCEL = os.path.join(BASE_DIR, NOME_PLANILHA)
