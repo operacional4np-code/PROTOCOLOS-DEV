@@ -18,7 +18,7 @@ st.title("📄 Gerador de Protocolos de Devolução")
 st.markdown("Insira as Notas Fiscais abaixo para gerar e baixar os protocolos correspondentes.")
 
 # --- FUNÇÕES DE BACKEND ---
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=10) # Cache reduzido para carregar dados novos mais rápido
 def baixar_dados_google_sheets():
     """Busca os dados atualizados diretamente do Google Sheets"""
     try:
@@ -97,7 +97,6 @@ def gerar_pdf_memoria(dados_filtrados):
     bloco_atual = 0
     
     for _, row in dados_filtrados.iterrows():
-        # Linha 103 TOTALMENTE CORRIGIDA E REVISADA AQUI:
         info_nota = {
             'protocolo': row.get('protocolo', '---'),
             'cliente': row.get('nome', '---'),
@@ -116,7 +115,7 @@ def gerar_pdf_memoria(dados_filtrados):
     buffer.seek(0)
     return buffer
 
-# --- INTERFACE DO USUÁRIO EM FORMATO DE FORMULÁRIO ---
+# --- INTERFACE DO USUÁRIO ---
 
 with st.form("formulario_notas"):
     input_notas = st.text_area(
@@ -135,8 +134,14 @@ if botao_enviar and input_notas:
         
         if df is not None:
             if 'nota fiscal' in df.columns:
-                df['nota fiscal'] = df['nota fiscal'].astype(str).str.strip()
-                dados_encontrados = df[df['nota fiscal'].isin(lista_notas)]
+                # Força a coluna inteira da planilha a virar texto (String) e remove NAs
+                df['nota fiscal'] = df['nota fiscal'].astype(str).fillna('')
+                
+                # NOVA LÓGICA DE BUSCA: 
+                # Cria uma máscara que verifica se QUALQUER uma das notas digitadas 
+                # está contida no texto da célula da planilha
+                mascara = df['nota fiscal'].apply(lambda x: any(nota in x for nota in lista_notas))
+                dados_encontrados = df[mascara]
                 
                 if not dados_encontrados.empty:
                     st.success(f"🎉 Pronto! Localizamos {len(dados_encontrados)} registro(s).")
