@@ -87,4 +87,4 @@ def desenhar_bloco_protocolo(pdf, y_offset, dados):
     # Linha tracejada para corte entre os blocos
     pdf.setDash(2, 2)
     pdf.line(30, y_offset - 165, 580, y_offset - 165)
-    pdf.setDash(
+    pdf.setDash()
