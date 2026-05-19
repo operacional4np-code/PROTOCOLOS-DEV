@@ -90,4 +90,43 @@ def desenhar_bloco_final_mg(pdf, y_offset, dados):
     pdf.setFont("Helvetica-Oblique", 9)
     pdf.drawString(185, y_offset - 125, "(Nome legível e RG)")
     
-    pdf.setFont("Helvetica
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(45, y_offset - 155, "ASSINATURA:")
+    pdf.setLineWidth(0.8)
+    pdf.line(125, y_offset - 155, 450, y_offset - 155)
+    
+    pdf.setLineWidth(0.5)
+    pdf.setDash(3, 3)
+    pdf.line(30, y_offset - 190, 580, y_offset - 190)
+    pdf.setDash(1, 0)
+
+def gerar_pdf_memoria(dados_filtrados):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    y_positions = [720, 475, 230]
+    bloco_atual = 0
+    
+    for _, row in dados_filtrados.iterrows():
+        info_nota = {
+            'protocolo': row.get('protocolo', '---'),
+            'cliente': row.get('nome', '---'),
+            'nota_fiscal': row.get('nota fiscal', '---'),
+            'cte': row.get('cte', '---')
+        }
+        
+        if bloco_atual > 2:
+            c.showPage()
+            bloco_atual = 0
+            
+        desenhar_bloco_final_mg(c, y_positions[bloco_atual], info_nota)
+        bloco_atual += 1
+        
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+# --- CONSTRUÇÃO COMPACTA DO FORMULÁRIO (EVITA BUG DA TELA SUMIR) ---
+with st.form("meu_formulario"):
+    input_notas = st.text_area("Digite ou cole as Notas Fiscais aqui:", placeholder="Exemplo:\n1599605\n1609405")
+    botao_enviar
