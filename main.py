@@ -63,4 +63,24 @@ def desenhar_bloco_final_mg(pdf, y_offset, dados):
     pdf.drawString(45, y_offset - 25, "PROTOCOLO DE DEVOLUÇÃO")
     
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(380, y_offset - 25, "
+    pdf.drawString(380, y_offset - 25, "PROTOCOLO Nº:")
+    pdf.setFont("Helvetica", 11)
+    p_num = f"MG-{limpar_float(dados['protocolo'])}"
+    pdf.drawString(485, y_offset - 25, p_num)
+    
+    # 3. LINHA 1: CLIENTE E CTE
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(45, y_offset - 55, "CLIENTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(105, y_offset - 55, str(dados['cliente']).upper())
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(380, y_offset - 55, "Nº CTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(430, y_offset - 55, limpar_float(dados['cte']))
+    
+    # 4. LINHA 2: NOTA FISCAL E PROTOCOLO CLIENTE
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(45, y_offset - 80, "Nº NOTA FISCAL:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(145, y
