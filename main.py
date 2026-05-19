@@ -84,4 +84,54 @@ def desenhar_bloco_final(c, y, row):
     c.line(80, y + 78, 250, y + 78)
     
     c.drawString(270, y + 80, "Nº PROTOCOLO CLIENTE:")
-    c.line(400, y + 78, 550, y
+    c.line(400, y + 78, 550, y + 78)
+    c.setFont("Helvetica", 10)
+    c.drawString(420, y + 82, limpar_float(row.get('protocolo', '')))
+    
+    # Recebedor
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(45, y + 50, "DADOS DO RECEBEDOR:")
+    c.line(160, y + 48, 550, y + 48)
+    c.setFont("Helvetica", 8)
+    c.drawString(350, y + 38, "Nome legível e RG")
+    
+    # Assinatura
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(45, y + 20, "ASSINATURA:")
+    c.line(120, y + 18, 550, y + 18)
+
+def gerar_pdf(dados):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    posicoes = [550, 310, 70]
+    
+    for i, (_, row) in enumerate(dados.iterrows()):
+        bloco = i % 3
+        if i > 0 and bloco == 0:
+            c.showPage()
+        desenhar_bloco_final(c, posicoes[bloco], row)
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+# --- INTERFACE ---
+st.title("📄 Gerador de Protocolos")
+
+with st.form("form_busca"):
+    input_notas = st.text_area("Cole as Notas Fiscais:")
+    submitted = st.form_submit_button("Gerar PDF")
+
+if submitted and input_notas:
+    lista_notas = re.findall(r'\d+', input_notas)
+    df = baixar_dados_google_sheets()
+    if df is not None:
+        df['nota fiscal'] = df['nota fiscal'].astype(str).fillna('')
+        mask = df['nota fiscal'].apply(lambda x: any(n in x for n in lista_notas))
+        dados = df[mask]
+        
+        if not dados.empty:
+            pdf = gerar_pdf(dados)
+            st.success(f"Encontramos {len(dados)} protocolos!")
+            st.download_button("📥 Baixar PDF", data=pdf, file_name="protocolo.pdf", mime="application/pdf")
+        else:
+            st.error("Notas não encontradas.")
