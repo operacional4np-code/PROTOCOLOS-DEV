@@ -115,7 +115,7 @@ def gerar_pdf(dados):
     return buffer
 
 # --- INTERFACE ---
-st.title("📄 Gerador de Protocolos")
+st.title("📦 Gerador de Protocolos")
 
 with st.form("form_busca"):
     input_notas = st.text_area("Cole as Notas Fiscais:")
