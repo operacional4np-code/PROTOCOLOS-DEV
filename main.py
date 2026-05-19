@@ -52,4 +52,4 @@ def desenhar_bloco_protocolo(pdf, y_offset, dados):
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(50, y_offset - 30, "CLIENTE:")
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(110, y_offset -)
+    pdf.drawString(110, y_offset - )
