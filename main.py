@@ -48,8 +48,56 @@ def desenhar_bloco_protocolo(pdf, y_offset, dados):
     pdf.setFont("Helvetica", 12)
     pdf.drawString(500, y_offset, f"MG-{dados['protocolo']}")
     
-    # Coluna da Esquerda
+    # Coluna da Esquerda (Corrigido o y_offset - 30 aqui)
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(50, y_offset - 30, "CLIENTE:")
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(110, y_offset - )
+    pdf.drawString(110, y_offset - 30, str(dados['cliente']))
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 55, "Nº NOTA FISCAL:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(150, y_offset - 55, str(dados['nota_fiscal']))
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 80, "DATA:")
+    pdf.drawString(100, y_offset - 80, "______ / ______ / __________") 
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 110, "DADOS DO RECEBEDOR:")
+    pdf.setFont("Helvetica-Oblique", 9)
+    pdf.drawString(190, y_offset - 110, "(Nome legível e RG)")
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 140, "ASSINATURA:")
+    pdf.line(130, y_offset - 142, 350, y_offset - 142)
+    
+    # Coluna da Direita
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(380, y_offset - 30, "Nº CTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(430, y_offset - 30, str(dados['cte']))
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(380, y_offset - 55, "Nº PROTOCOLO CLIENTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(530, y_offset - 55, str(dados['protocolo']))
+    
+    # Linha tracejada para corte
+    pdf.setDash(2, 2)
+    pdf.line(30, y_offset - 165, 580, y_offset - 165)
+    pdf.setDash(1, 0)
+
+def gerar_pdf_memoria(dados_filtrados):
+    """Gera o PDF em memória (BytesIO)"""
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    y_positions = [730, 480, 230]
+    bloco_atual = 0
+    
+    for _, row in dados_filtrados.iterrows():
+        info_nota = {
+            'protocolo': row.get('protocolo', '---'),
+            'cliente': row.get('nome', '---'),
+            'nota_fiscal': row.get('
