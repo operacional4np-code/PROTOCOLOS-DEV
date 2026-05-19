@@ -1,64 +1,90 @@
+import streamlit as st
 import pandas as pd
-from PIL import Image, ImageDraw, ImageFont
-import os
+import requests
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.colors import black
 
-# --- CONFIGURAÇÃO ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-NOME_PLANILHA = "Dados1.xlsx"
-NOME_IMAGEM = "modelo_protocolo.png"
-OUTPUT_DIR = os.path.join(BASE_DIR, "protocolos_prontos")
+# --- CONFIGURAÇÕES DA PLANILHA ---
+SHEET_ID = "1f_NDUAezh4g0ztyHVUO_t33QxGai9TYcWOD-IAoPcuE"
+URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
 
-def gerar_protocolos():
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+# --- CONFIGURAÇÃO DA PÁGINA WEB ---
+st.set_page_config(page_title="Gerador de Protocolos - MG", page_icon="📄", layout="centered")
 
-    caminho_excel = os.path.join(BASE_DIR, NOME_PLANILHA)
-    caminho_img = os.path.join(BASE_DIR, NOME_IMAGEM)
+st.title("📄 Gerador de Protocolos de Devolução")
+st.markdown("Insira as Notas Fiscais abaixo para gerar e baixar os protocolos correspondentes.")
 
+# --- FUNÇÕES DE BACKEND ---
+@st.cache_data(ttl=60) # Atualiza os dados a cada 60 segundos se houver nova busca
+def baixar_dados_google_sheets():
+    """Busca os dados atualizados diretamente do Google Sheets"""
     try:
-        print(f"⏳ Lendo {NOME_PLANILHA}...")
-        # Lemos o Excel (se houver linhas vazias no topo, o pandas ignora)
-        df = pd.read_excel(caminho_excel)
+        response = requests.get(URL_CSV)
+        response.raise_for_status()
         
-        # LIMPEZA TOTAL DE COLUNAS: tira espaços, remove acentos (opcional) e põe em MAIÚSCULO
-        df.columns = [str(c).strip().upper() for c in df.columns]
+        # Converte o conteúdo baixado em um DataFrame do Pandas
+        csv_data = io.StringIO(response.content.decode('utf-8'))
+        df = pd.read_csv(csv_data)
         
-        colunas_encontradas = list(df.columns)
-        print(f"📋 Colunas que o Python encontrou: {colunas_encontradas}")
-
-        if not colunas_encontradas:
-            print("❌ Erro: A planilha parece estar vazia!")
-            return
-
-        for index, row in df.iterrows():
-            # Abrindo a imagem modelo
-            with Image.open(caminho_img).convert("RGB") as img:
-                draw = ImageDraw.Draw(img)
-                fonte = ImageFont.load_default()
-
-                # USAMOS .get() PARA NUNCA MAIS DAR O ERRO DE 'KEYERROR'
-                # Se não achar a coluna, ele escreve "Não encontrado" em vez de travar
-                p_protocolo = str(row.get('PROTOCOLO', 'Sem_ID'))
-                p_destin    = str(row.get('DESTINATÁRIO', '---'))
-                p_fiscal    = str(row.get('N.FISCAL', '---'))
-                p_cte       = str(row.get('MINUTACTE', '---'))
-
-                # Escrevendo na imagem
-                draw.text((800, 48),  p_protocolo, fill="black", font=fonte)
-                draw.text((100, 145), p_destin,    fill="black", font=fonte)
-                draw.text((150, 242), p_fiscal,    fill="black", font=fonte)
-                draw.text((550, 242), p_cte,       fill="black", font=fonte)
-
-                # Nome do arquivo de saída (usa o protocolo ou o número da linha se falhar)
-                nome_saida = f"Protocolo_{p_protocolo}_{index}.png"
-                img.save(os.path.join(OUTPUT_DIR, nome_saida))
-                print(f"✅ {nome_saida} gerado!")
-
-        print(f"\n🚀 Finalizado! Verifique a pasta: {OUTPUT_DIR}")
-
+        # Padroniza o nome das colunas (remove espaços e põe em minúsculo para evitar erros)
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        return df
     except Exception as e:
-        # Aqui ele vai te dizer exatamente onde foi o erro
-        print(f"❌ Erro crítico: {e}")
+        st.error(f"Erro ao conectar com a planilha do Google: {e}")
+        return None
 
-if __name__ == "__main__":
-    gerar_protocolos()
+def desenhar_bloco_protocolo(pdf, y_offset, dados):
+    """Desenha um dos blocos de protocolo no PDF baseado no modelo de MG"""
+    pdf.setStrokeColor(black)
+    pdf.setLineWidth(1)
+    
+    # Cabeçalho do Bloco
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(50, y_offset, "PROTOCOLO DE DEVOLUÇÃO")
+    
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(400, y_offset, "PROTOCOLO Nº:")
+    pdf.setFont("Helvetica", 12)
+    pdf.drawString(500, y_offset, f"MG-{dados['protocolo']}")
+    
+    # Coluna da Esquerda
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 30, "CLIENTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(110, y_offset - 30, str(dados['cliente']))
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 55, "Nº NOTA FISCAL:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(150, y_offset - 55, str(dados['nota_fiscal']))
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 80, "DATA:")
+    pdf.drawString(100, y_offset - 80, "______ / ______ / __________") 
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 110, "DADOS DO RECEBEDOR:")
+    pdf.setFont("Helvetica-Oblique", 9)
+    pdf.drawString(190, y_offset - 110, "(Nome legível e RG)")
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, y_offset - 140, "ASSINATURA:")
+    pdf.line(130, y_offset - 142, 350, y_offset - 142)
+    
+    # Coluna da Direita
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(380, y_offset - 30, "Nº CTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(430, y_offset - 30, str(dados['cte']))
+    
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(380, y_offset - 55, "Nº PROTOCOLO CLIENTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(530, y_offset - 55, str(dados['protocolo']))
+    
+    # Linha tracejada para corte entre os blocos
+    pdf.setDash(2, 2)
+    pdf.line(30, y_offset - 165, 580, y_offset - 165)
+    pdf.setDash(
