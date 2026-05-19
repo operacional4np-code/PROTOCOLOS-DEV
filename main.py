@@ -6,15 +6,12 @@ import re
 import os
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from reportlab.lib.colors import black
 
+# Configurações iniciais
 SHEET_ID = "1f_NDUAezh4g0ztyHVUO_t33QxGai9TYcWOD-IAoPcuE"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
 
-st.set_page_config(page_title="Gerador de Protocolos - MG", page_icon="📄", layout="centered")
-
-st.title("📄 Gerador de Protocolos de Devolução")
-st.markdown("Insira as Notas Fiscais abaixo para gerar e baixar os protocolos correspondentes.")
+st.set_page_config(page_title="Gerador de Protocolos - MG", page_icon="📄")
 
 @st.cache_data(ttl=2)
 def baixar_dados_google_sheets():
@@ -26,27 +23,61 @@ def baixar_dados_google_sheets():
         df.columns = [str(c).strip().lower() for c in df.columns]
         return df
     except Exception as e:
-        st.error(f"Erro ao carregar dados do Google Sheets: {e}")
+        st.error(f"Erro ao carregar dados: {e}")
         return None
 
 def limpar_float(valor):
     texto = str(valor).strip()
-    if texto.endswith('.0'):
-        return texto[:-2]
-    return texto
+    return texto[:-2] if texto.endswith('.0') else texto
 
-def desenhar_bloco_final_mg(pdf, y_offset, dados):
-    pdf.setFillColor(black)
+# Função principal que gera o PDF usando o modelo como fundo
+def gerar_pdf_com_fundo(dados_filtrados):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
     
-    caminho_logo = None
-    opcoes_nome = ["logo.png.JPG", "logo.png", "logo.jpg", "logo.jpeg", "logo.png.jpg", "LOGO.JPG", "LOGO.PNG"]
-    for opcao in opcoes_nome:
-        if os.path.exists(opcao):
-            caminho_logo = opcao
-            break
+    # Coordenadas aproximadas para preencher o modelo (ajuste fino pode ser necessário)
+    posicoes = [725, 480, 235] # Y para cada um dos 3 blocos
+    
+    for i, (_, row) in enumerate(dados_filtrados.iterrows()):
+        bloco = i % 3
+        if i > 0 and bloco == 0:
+            c.showPage()
             
-    if caminho_logo:
-        pdf.drawImage(caminho_logo, 45, y_offset + 10, width=100, height=30, preserveAspectRatio=True, mask='auto')
-    else:
-        pdf.setFont("Helvetica-Bold", 11)
-        pdf.drawString(45, y_offset + 20, "NEW POST")
+        # 1. Carimba o modelo de fundo
+        if os.path.exists("modelo_protocolo.png"):
+            c.drawImage("modelo_protocolo.png", 30, posicoes[bloco], width=550, height=200, preserveAspectRatio=True, mask='auto')
+        
+        # 2. Escreve os dados por cima (ajuste os valores X e Y conforme necessário)
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(480, posicoes[bloco] + 165, f"MG-{limpar_float(row.get('protocolo', ''))}")
+        
+        c.setFont("Helvetica", 11)
+        c.drawString(100, posicoes[bloco] + 135, str(row.get('nome', '')).upper()) # Cliente
+        c.drawString(150, posicoes[bloco] + 105, limpar_float(row.get('nota fiscal', ''))) # Nota
+        c.drawString(500, posicoes[bloco] + 105, limpar_float(row.get('protocolo', ''))) # Prot Cliente
+        c.drawString(460, posicoes[bloco] + 105, limpar_float(row.get('cte', ''))) # CTE
+
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+# Interface
+st.title("📄 Gerador de Protocolos")
+with st.form("form_busca"):
+    input_notas = st.text_area("Cole as Notas Fiscais:")
+    submitted = st.form_submit_button("Gerar PDF")
+
+if submitted and input_notas:
+    lista_notas = re.findall(r'\d+', input_notas)
+    df = baixar_dados_google_sheets()
+    
+    if df is not None:
+        df['nota fiscal'] = df['nota fiscal'].astype(str).fillna('')
+        mask = df['nota fiscal'].apply(lambda x: any(n in x for n in lista_notas))
+        dados_encontrados = df[mask]
+        
+        if not dados_encontrados.empty:
+            pdf_final = gerar_pdf_com_fundo(dados_encontrados)
+            st.download_button("📥 Baixar PDF", data=pdf_final, file_name="protocolo.pdf", mime="application/pdf")
+        else:
+            st.error("Notas não encontradas.")
