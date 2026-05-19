@@ -50,20 +50,3 @@ def desenhar_bloco_final_mg(pdf, y_offset, dados):
     else:
         pdf.setFont("Helvetica-Bold", 11)
         pdf.drawString(45, y_offset + 20, "NEW POST")
-    
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(380, y_offset + 20, "PROTOCOLO Nº:")
-    pdf.setFont("Helvetica", 11)
-    p_num = f"MG-{limpar_float(dados['protocolo'])}"
-    pdf.drawString(485, y_offset + 20, p_num)
-    
-    pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(45, y_offset - 15, "PROTOCOLO DE DEVOLUÇÃO")
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 45, "CLIENTE:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(105, y_offset - 45, str(dados['cliente']).upper())
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(380, y_
