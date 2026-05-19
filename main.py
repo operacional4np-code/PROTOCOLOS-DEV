@@ -83,4 +83,4 @@ def desenhar_bloco_final_mg(pdf, y_offset, dados):
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(45, y_offset - 80, "Nº NOTA FISCAL:")
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(145, y
+    pdf.drawString(145, y)
