@@ -39,10 +39,9 @@ def limpar_float(valor):
     return texto
 
 def desenhar_bloco_final_mg(pdf, y_offset, dados):
-    """Desenha o layout idêntico ao gerado pelo antigo site (Anexo 2)"""
     pdf.setFillColor(black)
     
-    # 1. LINHA DO TOPO: LOGO (ESQUERDA) E PROTOCOLO GERAL (DIREITA)
+    # 1. LOGO DA NEW POST
     caminho_logo = None
     opcoes_nome = ["logo.png.JPG", "logo.png", "logo.jpg", "logo.jpeg", "logo.png.jpg", "LOGO.JPG", "LOGO.PNG"]
     for opcao in opcoes_nome:
@@ -51,57 +50,9 @@ def desenhar_bloco_final_mg(pdf, y_offset, dados):
             break
             
     if caminho_logo:
-        # Logo posicionado no canto superior esquerdo do bloco
         pdf.drawImage(caminho_logo, 45, y_offset + 10, width=100, height=30, preserveAspectRatio=True, mask='auto')
     else:
         pdf.setFont("Helvetica-Bold", 11)
         pdf.drawString(45, y_offset + 20, "NEW POST")
     
-    # Protocolo Geral alinhado perfeitamente na mesma altura do logo à direita
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(380, y_offset + 20, "PROTOCOLO Nº:")
-    pdf.setFont("Helvetica", 11)
-    p_num = f"MG-{limpar_float(dados['protocolo'])}"
-    pdf.drawString(485, y_offset + 20, p_num)
-    
-    # 2. TÍTULO PRINCIPAL LOGO ABAIXO
-    pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(45, y_offset - 15, "PROTOCOLO DE DEVOLUÇÃO")
-    
-    # 3. LINHA 1: CLIENTE E CTE
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 45, "CLIENTE:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(105, y_offset - 45, str(dados['cliente']).upper())
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(380, y_offset - 45, "Nº CTE:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(430, y_offset - 45, limpar_float(dados['cte']))
-    
-    # 4. LINHA 2: NOTA FISCAL E PROTOCOLO CLIENTE
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 70, "Nº NOTA FISCAL:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(145, y_offset - 70, limpar_float(dados['nota_fiscal']))
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(380, y_offset - 70, "Nº PROTOCOLO CLIENTE:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(530, y_offset - 70, limpar_float(dados['protocolo']))
-    
-    # 5. LINHA 3: DATA
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 95, "DATA:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(85, y_offset - 95, "______ / ______ / __________")
-    
-    # 6. LINHA 4: DADOS DO RECEBEDOR
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 125, "DADOS DO RECEBEDOR:")
-    pdf.setFont("Helvetica-Oblique", 9)
-    pdf.drawString(185, y_offset - 125, "(Nome legível e RG)")
-    
-    # 7. LINHA 5: ASSINATURA
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 155, "ASS
+    # 2. NÚMERO DO PROTOCO
