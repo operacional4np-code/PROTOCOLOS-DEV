@@ -3,8 +3,8 @@ import pandas as pd
 import requests
 import io
 import re
+import os
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import Table, TableStyle
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import black
 
@@ -19,16 +19,13 @@ st.title("📄 Gerador de Protocolos de Devolução")
 st.markdown("Insira as Notas Fiscais abaixo para gerar e baixar os protocolos correspondentes.")
 
 # --- FUNÇÕES DE BACKEND ---
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=5) 
 def baixar_dados_google_sheets():
-    """Busca os dados atualizados diretamente do Google Sheets"""
     try:
         response = requests.get(URL_CSV)
         response.raise_for_status()
-        
         csv_data = io.StringIO(response.content.decode('utf-8'))
         df = pd.read_csv(csv_data)
-        
         df.columns = [str(c).strip().lower() for c in df.columns]
         return df
     except Exception as e:
@@ -36,88 +33,97 @@ def baixar_dados_google_sheets():
         return None
 
 def limpar_float(valor):
-    """Remove o '.0' caso o número venha formatado como float da planilha"""
     texto = str(valor).strip()
     if texto.endswith('.0'):
         return texto[:-2]
     return texto
 
-def desenhar_bloco_protocolo(pdf, y_offset, dados):
-    """Desenha um dos blocos de protocolo no PDF idêntico ao modelo de referência"""
-    
-    # --- 1. TÍTULOS E CABEÇALHO ---
+def desenhar_bloco_final_mg(pdf, y_offset, dados):
+    """Desenha o bloco usando coordenadas milimétricas para ficar idêntico à referência"""
     pdf.setFillColor(black)
     
-    # Título Principal (Esquerda)
+    # 1. BUSCA INTELIGENTE DO LOGO (Resolve o problema da extensão dupla logo.png.JPG)
+    caminho_logo = None
+    opcoes_nome = ["logo.png.JPG", "logo.png", "logo.jpg", "logo.jpeg", "logo.png.jpg", "LOGO.JPG", "LOGO.PNG"]
+    
+    for opcao in opcoes_nome:
+        if os.path.exists(opcao):
+            caminho_logo = opcao
+            break
+            
+    if caminho_logo:
+        # Desenha a imagem exatamente acima do título do protocolo
+        pdf.drawImage(caminho_logo, 45, y_offset + 5, width=110, height=30, preserveAspectRatio=True, mask='auto')
+    else:
+        # Caso o arquivo suma por algum motivo, mantém um aviso discreto
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(45, y_offset + 15, "[ LOGO NEW POST ]")
+    
+    # 2. CABEÇALHO DO BLOCO
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(45, y_offset, "PROTOCOLO DE DEVOLUÇÃO")
+    pdf.drawString(45, y_offset - 25, "PROTOCOLO DE DEVOLUÇÃO")
     
-    # Protocolo Geral (Direita)
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(380, y_offset, "PROTOCOLO Nº:")
+    pdf.drawString(380, y_offset - 25, "PROTOCOLO Nº:")
     pdf.setFont("Helvetica", 11)
-    pdf.drawString(485, y_offset, f"MG-{limpar_float(dados['protocolo'])}")
+    pdf.drawString(485, y_offset - 25, f"MG-{limpar_float(dados['protocolo'])}")
     
-    # --- 2. TABELA DE DADOS (Duas Colunas Perfeitas) ---
-    # Montamos a estrutura idêntica à foto de referência
-    col_esquerda = [
-        f"CLIENTE:   {str(dados['cliente']).upper()}",
-        f"Nº NOTA FISCAL:   {limpar_float(dados['nota_fiscal'])}",
-        "DATA:   ______ / ______ / __________"
-    ]
-    
-    col_direita = [
-        f"Nº CTE:   {limpar_float(dados['cte'])}",
-        f"Nº PROTOCOLO CLIENTE:   {limpar_float(dados['protocolo'])}",
-        "" # Espaço em branco para alinhar com a Data
-    ]
-    
-    dados_tabela = [
-        [col_esquerda[0], col_direita[0]],
-        [col_esquerda[1], col_direita[1]],
-        [col_esquerda[2], col_direita[2]]
-    ]
-    
-    # Criamos a tabela definindo as larguras exatas das colunas (Esquerda: 335pt, Direita: 200pt)
-    tabela = Table(dados_tabela, colWidths=[335, 200])
-    tabela.setStyle(TableStyle([
-        ('FONTNAME', (0,0), (-1,-1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,-1), 10),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10), # Dá o espaçamento vertical entre as linhas
-        ('TOPPADDING', (0,0), (-1,-1), 5),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ]))
-    
-    # Renderiza a tabela na coordenada correta
-    tabela.wrapOn(pdf, 45, y_offset - 80)
-    tabela.drawOn(pdf, 45, y_offset - 80)
-    
-    # --- 3. CAMPOS INFERIORES (RECEBEDOR E ASSINATURA) ---
-    # Campo Recebedor
+    # 3. LINHA 1: CLIENTE E CTE
+    # Cliente (Esquerda)
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 110, "DADOS DO RECEBEDOR:")
+    pdf.drawString(45, y_offset - 55, "CLIENTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(105, y_offset - 55, str(dados['cliente']).upper())
+    
+    # CTE (Direita)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(380, y_offset - 55, "Nº CTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(430, y_offset - 55, limpar_float(dados['cte']))
+    
+    # 4. LINHA 2: NOTA FISCAL E PROTOCOLO CLIENTE
+    # NF (Esquerda)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(45, y_offset - 80, "Nº NOTA FISCAL:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(145, y_offset - 80, limpar_float(dados['nota_fiscal']))
+    
+    # Protocolo Cliente (Direita)
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(380, y_offset - 80, "Nº PROTOCOLO CLIENTE:")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(530, y_offset - 80, limpar_float(dados['protocolo']))
+    
+    # 5. LINHA 3: DATA
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(45, y_offset - 110, "DATA:")
+    pdf.drawString(85, y_offset - 110, "______ / ______ / __________")
+    
+    # 6. LINHA 4: DADOS DO RECEBEDOR
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(45, y_offset - 140, "DADOS DO RECEBEDOR:")
     pdf.setFont("Helvetica-Oblique", 9)
-    pdf.drawString(185, y_offset - 110, "(Nome legível e RG)")
+    pdf.drawString(185, y_offset - 140, "(Nome legível e RG)")
     
-    # Campo Assinatura com Linha Contínua Longa
+    # 7. LINHA 5: ASSINATURA
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(45, y_offset - 145, "ASSINATURA:")
+    pdf.drawString(45, y_offset - 170, "ASSINATURA:")
     pdf.setLineWidth(0.8)
-    pdf.line(130, y_offset - 147, 450, y_offset - 147)
+    pdf.line(125, y_offset - 170, 450, y_offset - 170)
     
-    # --- 4. LINHA PONTEADA DE RECORTE ---
+    # 8. LINHA PONTEADA DE RECORTE
     pdf.setLineWidth(0.5)
     pdf.setDash(2, 2)
-    pdf.line(30, y_offset - 175, 580, y_offset - 175)
+    pdf.line(30, y_offset - 200, 580, y_offset - 200)
     pdf.setDash(1, 0) # Reseta para linha normal
 
 def gerar_pdf_memoria(dados_filtrados):
-    """Gera o PDF em memória (BytesIO) com distribuição de 3 blocos por página"""
+    """Gera o PDF com 3 blocos por página"""
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
-    # Coordenadas y ajustadas milimetricamente para o novo espaçamento dos blocos
-    y_positions = [735, 480, 225]
+    # Posições Y calculadas para acomodar o espaço extra do logo
+    y_positions = [730, 490, 250]
     bloco_atual = 0
     
     for _, row in dados_filtrados.iterrows():
@@ -132,7 +138,7 @@ def gerar_pdf_memoria(dados_filtrados):
             c.showPage()
             bloco_atual = 0
             
-        desenhar_bloco_protocolo(c, y_positions[bloco_atual], info_nota)
+        desenhar_bloco_final_mg(c, y_positions[bloco_atual], info_nota)
         bloco_atual += 1
         
     c.save()
@@ -170,16 +176,3 @@ if botao_enviar and input_notas:
                     
                     st.download_button(
                         label="📥 CLIQUE AQUI PARA BAIXAR O PDF",
-                        data=pdf_pronto,
-                        file_name="protocolos_devolucao_mg.pdf",
-                        mime="application/pdf"
-                    )
-                    
-                    st.markdown("### 📋 Tabela de Conferência:")
-                    st.dataframe(dados_encontrados[['protocolo', 'nome', 'nota fiscal', 'cte']])
-                else:
-                    st.error("❌ Nenhuma dessas notas foi encontrada na planilha do Google.")
-            else:
-                st.error("❌ Erro de estrutura: Não achei a coluna 'nota fiscal' na sua planilha.")
-    else:
-        st.warning("⚠ Digite pelo menos um número de nota fiscal válido.")
