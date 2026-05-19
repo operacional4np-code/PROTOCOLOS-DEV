@@ -11,7 +11,7 @@ from reportlab.pdfgen import canvas
 SHEET_ID = "1f_NDUAezh4g0ztyHVUO_t33QxGai9TYcWOD-IAoPcuE"
 URL_CSV = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid=0"
 
-st.set_page_config(page_title="Gerador de Protocolos", page_icon="📄")
+st.set_page_config(page_title="Gerador de Protocolos", page_icon="📦")
 
 @st.cache_data(ttl=2)
 def baixar_dados_google_sheets():
