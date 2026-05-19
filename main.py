@@ -4,6 +4,7 @@ import requests
 import io
 import re
 from reportlab.lib.pagesizes import letter
+from reportlab.platypus import Table, TableStyle
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import black
 
@@ -18,7 +19,7 @@ st.title("📄 Gerador de Protocolos de Devolução")
 st.markdown("Insira as Notas Fiscais abaixo para gerar e baixar os protocolos correspondentes.")
 
 # --- FUNÇÕES DE BACKEND ---
-@st.cache_data(ttl=10) # Cache reduzido para carregar dados novos mais rápido
+@st.cache_data(ttl=10)
 def baixar_dados_google_sheets():
     """Busca os dados atualizados diretamente do Google Sheets"""
     try:
@@ -34,66 +35,89 @@ def baixar_dados_google_sheets():
         st.error(f"Erro ao carregar dados do Google Sheets: {e}")
         return None
 
+def limpar_float(valor):
+    """Remove o '.0' caso o número venha formatado como float da planilha"""
+    texto = str(valor).strip()
+    if texto.endswith('.0'):
+        return texto[:-2]
+    return texto
+
 def desenhar_bloco_protocolo(pdf, y_offset, dados):
-    """Desenha um dos blocos de protocolo no PDF baseado no modelo de MG"""
-    pdf.setStrokeColor(black)
-    pdf.setLineWidth(1)
+    """Desenha um dos blocos de protocolo no PDF idêntico ao modelo de referência"""
     
-    # Cabeçalho do Bloco
+    # --- 1. TÍTULOS E CABEÇALHO ---
+    pdf.setFillColor(black)
+    
+    # Título Principal (Esquerda)
     pdf.setFont("Helvetica-Bold", 14)
-    pdf.drawString(50, y_offset, "PROTOCOLO DE DEVOLUÇÃO")
+    pdf.drawString(45, y_offset, "PROTOCOLO DE DEVOLUÇÃO")
     
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(400, y_offset, "PROTOCOLO Nº:")
-    pdf.setFont("Helvetica", 12)
-    pdf.drawString(500, y_offset, f"MG-{dados['protocolo']}")
+    # Protocolo Geral (Direita)
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(380, y_offset, "PROTOCOLO Nº:")
+    pdf.setFont("Helvetica", 11)
+    pdf.drawString(485, y_offset, f"MG-{limpar_float(dados['protocolo'])}")
     
-    # Coluna da Esquerda
+    # --- 2. TABELA DE DADOS (Duas Colunas Perfeitas) ---
+    # Montamos a estrutura idêntica à foto de referência
+    col_esquerda = [
+        f"CLIENTE:   {str(dados['cliente']).upper()}",
+        f"Nº NOTA FISCAL:   {limpar_float(dados['nota_fiscal'])}",
+        "DATA:   ______ / ______ / __________"
+    ]
+    
+    col_direita = [
+        f"Nº CTE:   {limpar_float(dados['cte'])}",
+        f"Nº PROTOCOLO CLIENTE:   {limpar_float(dados['protocolo'])}",
+        "" # Espaço em branco para alinhar com a Data
+    ]
+    
+    dados_tabela = [
+        [col_esquerda[0], col_direita[0]],
+        [col_esquerda[1], col_direita[1]],
+        [col_esquerda[2], col_direita[2]]
+    ]
+    
+    # Criamos a tabela definindo as larguras exatas das colunas (Esquerda: 335pt, Direita: 200pt)
+    tabela = Table(dados_tabela, colWidths=[335, 200])
+    tabela.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10), # Dá o espaçamento vertical entre as linhas
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    
+    # Renderiza a tabela na coordenada correta
+    tabela.wrapOn(pdf, 45, y_offset - 80)
+    tabela.drawOn(pdf, 45, y_offset - 80)
+    
+    # --- 3. CAMPOS INFERIORES (RECEBEDOR E ASSINATURA) ---
+    # Campo Recebedor
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(50, y_offset - 30, "CLIENTE:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(110, y_offset - 30, str(dados['cliente']))
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(50, y_offset - 55, "Nº NOTA FISCAL:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(150, y_offset - 55, str(dados['nota_fiscal']))
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(50, y_offset - 80, "DATA:")
-    pdf.drawString(100, y_offset - 80, "______ / ______ / __________") 
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(50, y_offset - 110, "DADOS DO RECEBEDOR:")
+    pdf.drawString(45, y_offset - 110, "DADOS DO RECEBEDOR:")
     pdf.setFont("Helvetica-Oblique", 9)
-    pdf.drawString(190, y_offset - 110, "(Nome legível e RG)")
+    pdf.drawString(185, y_offset - 110, "(Nome legível e RG)")
     
+    # Campo Assinatura com Linha Contínua Longa
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(50, y_offset - 140, "ASSINATURA:")
-    pdf.line(130, y_offset - 142, 350, y_offset - 142)
+    pdf.drawString(45, y_offset - 145, "ASSINATURA:")
+    pdf.setLineWidth(0.8)
+    pdf.line(130, y_offset - 147, 450, y_offset - 147)
     
-    # Coluna da Direita
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(380, y_offset - 30, "Nº CTE:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(430, y_offset - 30, str(dados['cte']))
-    
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(380, y_offset - 55, "Nº PROTOCOLO CLIENTE:")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(530, y_offset - 55, str(dados['protocolo']))
-    
-    # Linha tracejada para corte
+    # --- 4. LINHA PONTEADA DE RECORTE ---
+    pdf.setLineWidth(0.5)
     pdf.setDash(2, 2)
-    pdf.line(30, y_offset - 165, 580, y_offset - 165)
-    pdf.setDash(1, 0)
+    pdf.line(30, y_offset - 175, 580, y_offset - 175)
+    pdf.setDash(1, 0) # Reseta para linha normal
 
 def gerar_pdf_memoria(dados_filtrados):
-    """Gera o PDF em memória (BytesIO)"""
+    """Gera o PDF em memória (BytesIO) com distribuição de 3 blocos por página"""
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     
-    y_positions = [730, 480, 230]
+    # Coordenadas y ajustadas milimetricamente para o novo espaçamento dos blocos
+    y_positions = [735, 480, 225]
     bloco_atual = 0
     
     for _, row in dados_filtrados.iterrows():
@@ -134,12 +158,8 @@ if botao_enviar and input_notas:
         
         if df is not None:
             if 'nota fiscal' in df.columns:
-                # Força a coluna inteira da planilha a virar texto (String) e remove NAs
                 df['nota fiscal'] = df['nota fiscal'].astype(str).fillna('')
                 
-                # NOVA LÓGICA DE BUSCA: 
-                # Cria uma máscara que verifica se QUALQUER uma das notas digitadas 
-                # está contida no texto da célula da planilha
                 mascara = df['nota fiscal'].apply(lambda x: any(nota in x for nota in lista_notas))
                 dados_encontrados = df[mascara]
                 
