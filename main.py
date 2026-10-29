@@ -48,15 +48,20 @@ def desenhar_bloco_final(c, y, row):
     c.setFont("Helvetica-Bold", 14)
     c.drawString(140, y + 160, "PROTOCOLO DE DEVOLUÇÃO")
     
-    # Lógica de Prefixo (MG ou PE)
+    # Lógica de Prefixo (MG, SP ou PE)
     destino = str(row.get('destino', '')).upper()
-    prefixo = "MG" if "BETIM" in destino else "PE"
+    if "BETIM" in destino:
+        prefixo = "MG"
+    elif "BARUERI" in destino:
+        prefixo = "SP"
+    else:
+        prefixo = "PE"
     
     c.setFont("Helvetica", 9)
     c.drawString(430, y + 165, "PROTOCOLO Nº:")
     c.setFont("Helvetica-Bold", 12)
     
-    # MUDANÇA AQUI: Apenas desenha o prefixo + linha, sem o número
+    # Apenas desenha o prefixo + linha, sem o número
     c.drawString(430, y + 153, f"{prefixo}-")
     c.line(460, y + 153, 540, y + 153) 
     
